@@ -6,6 +6,8 @@
 #include <quickfix/Log.h>
 #include <quickfix/SocketAcceptor.h>
 
+#include <spdlog/spdlog.h>
+
 #include <atomic>
 #include <memory>
 #include <string>
@@ -30,9 +32,15 @@ public:
 	void stop()  { acceptor_->stop(); stopped_ = true; }
 	bool stopped() const { return stopped_.load(); }
 
-	void onCreate(const FIX::SessionID&) override {}
-	void onLogon(const FIX::SessionID&) override {}
-	void onLogout(const FIX::SessionID&) override {}
+	void onCreate(const FIX::SessionID& sessionID) override {
+		spdlog::info("{} sessionID={}", __PRETTY_FUNCTION__, sessionID.toString());
+	}
+	void onLogon(const FIX::SessionID& sessionID) override {
+		spdlog::info("{} sessionID={}", __PRETTY_FUNCTION__, sessionID.toString());
+	}
+	void onLogout(const FIX::SessionID& sessionID) override {
+		spdlog::info("{} sessionID={}", __PRETTY_FUNCTION__, sessionID.toString());
+	}
 
 	void toAdmin(FIX::Message&, const FIX::SessionID&) override {}
 	void fromAdmin(const FIX::Message&, const FIX::SessionID&) override {}
