@@ -29,7 +29,7 @@ public:
 	}
 
 	template <typename U>
-	std::unique_ptr<U> create(const std::string& symbol) {
+	std::unique_ptr<U> create(const std::string& mdReqID, const std::string& symbol) {
 		return {};
 	}
 };
@@ -38,24 +38,31 @@ WISE_ENUM_CLASS(BidOffer, Bid, Offer);
 struct PriceSnapshot {
 	BidOffer type;
 	double price;
-	double size;
-	std::string_view orderId;
+	int size;
+	std::string orderID;
 };
 
 template <>
 inline
-std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::MarketDataSnapshotFullRefresh>(const std::string& symbol) {
+std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::MarketDataSnapshotFullRefresh>(
+	const std::string& mdReqID, const std::string& symbol) {
 	auto mdSnapshotMsg = std::make_unique<FIX44::MarketDataSnapshotFullRefresh>();
+	mdSnapshotMsg->setField({FIX::FIELD::MDReqID, mdReqID}, true);
 	mdSnapshotMsg->setField({FIX::FIELD::Symbol, symbol}, true);
 
 	static std::array<PriceSnapshot, 2> orders {
 		PriceSnapshot{BidOffer::Bid, 0.99, 3, "test::order::3"},
 		PriceSnapshot{BidOffer::Offer, 1.01, 3, "test::order::3"}
 	};
-	FIX44::MarketDataRequest::NoMDEntryTypes noMDEntryTypes;
-	for (const auto& entry : orders) {
-//		noMDEntryTypes.set(entry);
-//		mdSnapshotMsg->
+	for (const auto& order : orders) {
+		FIX44::MarketDataSnapshotFullRefresh::NoMDEntries noMDEntries;
+		(order.type == BidOffer::Bid)
+			? noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_BID))
+			: noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_OFFER));
+		noMDEntries.set(FIX::MDEntryPx(order.price));
+		noMDEntries.set(FIX::MDEntrySize(order.size));
+		noMDEntries.set(FIX::OrderID(order.orderID));
+		mdSnapshotMsg->addGroup(noMDEntries);
 	}
 /*
 		FIX::MDReqID("req:" + std::to_string(++mdReqCount)),
