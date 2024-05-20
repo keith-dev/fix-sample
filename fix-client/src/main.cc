@@ -1,5 +1,7 @@
 #include "Application.h"
 
+#include <quickfix/Session.h>
+
 #include <spdlog/spdlog.h>
 
 #include <chrono>
@@ -29,8 +31,14 @@ int main(int argc, char* argv[]) {
 
 		app = std::make_unique<Application>(configFile);
 		app->start();
-		while (!stop)
+		while (!stop && !app->loggedOn())
 			std::this_thread::sleep_for(1s);
+
+		spdlog::info("{} sessions registered", FIX::Session::getSessions().size());
+		const auto sessionID = FIX::SessionID("FIX.4.4", "CLIENT1", "MD_GW6");
+		app->subscribe({"GBP/USD", "EUR/JPY"}, sessionID);
+		std::this_thread::sleep_for(2s);
+
 		app->stop();
 		spdlog::info("{}", "stopping");
 	}
