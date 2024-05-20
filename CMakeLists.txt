@@ -15,6 +15,7 @@ add_link_options(-pthread)
 
 add_executable(fix-gateway
 	fix-gateway/src/main.cc
+	fix-gateway/src/Application.cc
 	fix-gateway/src/Router.cc)
 target_include_directories(fix-gateway PRIVATE fix-gateway/include PUBLIC fix-gateway/include ${HOME}/include)
 target_link_directories(fix-gateway PUBLIC lib ${HOME}/lib /usr/lib/x86_64-linux-gnu)
@@ -22,6 +23,7 @@ target_link_libraries(fix-gateway PUBLIC quickfix)
 
 add_executable(fix-client
 	fix-client/src/main.cc
+	fix-client/src/Application.cc
 	fix-client/src/Router.cc)
 target_include_directories(fix-client PRIVATE fix-client/include PUBLIC fix-client/include ${HOME}/include)
 target_link_directories(fix-client PUBLIC lib ${HOME}/lib /usr/lib/x86_64-linux-gnu)

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <quickfix/fix44/MarketDataRequest.h>
-#include <quickfix/fix50sp2/MarketDataRequest.h>
+//#include <quickfix/fix44/MarketDataRequest.h>
+//#include <quickfix/fix50sp2/MarketDataRequest.h>
 
-#include <memory>
-#include <string>
-#include <vector>
+//#include <memory>
+//#include <string>
+//#include <vector>
 
 class Router;
 
