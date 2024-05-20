@@ -3,6 +3,7 @@
 #include <quickfix/fix44/MarketDataRequest.h>
 #include <quickfix/fix50sp2/MarketDataRequest.h>
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -32,12 +33,16 @@ std::unique_ptr<FIX44::MarketDataRequest> Model::create<FIX44::MarketDataRequest
 		FIX::MarketDepth(0));
 
 	FIX44::MarketDataRequest::NoMDEntryTypes noMDEntryTypes;
-	noMDEntryTypes.set(FIX::MDEntryType(FIX::MDEntryType_BID));
-	mdReqMsg->addGroup(noMDEntryTypes);
+	for (const auto& entry : std::array<FIX::MDEntryType, 2>{FIX::MDEntryType_BID, FIX::MDEntryType_OFFER}) {
+		noMDEntryTypes.set(entry);
+		mdReqMsg->addGroup(noMDEntryTypes);
+	}
 
 	FIX44::MarketDataRequest::NoRelatedSym noRelatedSym;
-	noRelatedSym.setField(FIX::Symbol(symbols.front()));
-	mdReqMsg->addGroup(noRelatedSym);
+	for (const auto& symbol : symbols) {
+		noRelatedSym.setField(FIX::Symbol(symbol));
+		mdReqMsg->addGroup(noRelatedSym);
+	}
 
 	return mdReqMsg;
 }

@@ -46,6 +46,11 @@ void Application::fromApp(const FIX::Message& msg, const FIX::SessionID& session
 
 void Application::onMessage(const FIX44::MarketDataRequest& msg, const FIX::SessionID& sessionID) {
 	spdlog::info("{} sessionID={}", __PRETTY_FUNCTION__, sessionID.toString());
+	for (const auto& symbol : model_.getSymbols(msg)) {
+		if (auto mdSnapshotMsg = model_.create<FIX44::MarketDataSnapshotFullRefresh>(symbol)) {
+			FIX::Session::sendToTarget(*mdSnapshotMsg, sessionID);
+		}
+	}
 }
 
 void Application::onMessage(const FIX44::BusinessMessageReject& msg, const FIX::SessionID& sessionID) {
