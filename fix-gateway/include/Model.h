@@ -6,13 +6,11 @@
 
 #include <wise_enum/wise_enum.h>
 
+#include <array>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
-
-namespace FIX44 {
-class MarketDataRequest;
-}
 
 class Router;
 
@@ -41,7 +39,7 @@ struct PriceSnapshot {
 	BidOffer type;
 	double price;
 	double size;
-	std::string orderId;
+	std::string_view orderId;
 };
 
 template <>
@@ -50,17 +48,15 @@ std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::Marke
 	auto mdSnapshotMsg = std::make_unique<FIX44::MarketDataSnapshotFullRefresh>();
 	mdSnapshotMsg->setField({FIX::FIELD::Symbol, symbol}, true);
 
-	static std::array<PriceSnapshot, 6> orders {
-		{BiddOffer::Bid, 0.99, 3, "test::order::1"}, {BiddOffer::Offer, 1.01, 3, "test::order::1"},
-		{BiddOffer::Bid, 0.99, 3, "test::order::2"}, {BiddOffer::Offer, 1.01, 3, "test::order::2"},
-		{BiddOffer::Bid, 0.99, 3, "test::order::3"}, {BiddOffer::Offer, 1.01, 3, "test::order::3"}
+	static std::array<PriceSnapshot, 2> orders {
+		PriceSnapshot{BidOffer::Bid, 0.99, 3, "test::order::3"},
+		PriceSnapshot{BidOffer::Offer, 1.01, 3, "test::order::3"}
 	};
 	FIX44::MarketDataRequest::NoMDEntryTypes noMDEntryTypes;
 	for (const auto& entry : orders) {
-		noMDEntryTypes.set(entry);
-		mdSnapshotMsg->
+//		noMDEntryTypes.set(entry);
+//		mdSnapshotMsg->
 	}
-
 /*
 		FIX::MDReqID("req:" + std::to_string(++mdReqCount)),
 		FIX::SubscriptionRequestType(FIX::SubscriptionRequestType_SNAPSHOT),

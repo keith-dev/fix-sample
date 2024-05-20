@@ -10,7 +10,15 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "$<0:>${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "$<0:>${CMAKE_BINARY_DIR}/lib")
 
 add_compile_definitions()
-add_compile_options(-pthread)
+add_compile_options(
+	-pthread
+	-Wno-ignored-qualifiers
+	-Wno-unused-private-field
+	-Wno-unused-parameter
+	-Wno-missing-field-initializers
+	-Wno-overloaded-virtual
+	-Wno-unused-variable
+	-Wno-deprecated-copy-with-user-provided-copy)
 add_link_options(-pthread)
 
 add_executable(fix-gateway
