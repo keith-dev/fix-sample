@@ -12,6 +12,49 @@
 #include <string_view>
 #include <vector>
 
+WISE_ENUM_CLASS(BidOffer, Bid, Offer);
+struct PriceSnapshot {
+	BidOffer type;
+	double price;
+	int size;
+	std::string orderID;
+};
+
+class MDPublisher {
+public:
+	bool Subscribe(const std::string& symbol, const FIX::SessionID& sessionID) {
+		auto iter = orderbooks_.find(symbol);
+		if (iter == orderbooks_.end())
+			return false;
+
+		subscribed_[symbol].insert(sessionID);
+		return true;
+	}
+
+	bool Unsubscribe(const std::string& symbol, const FIX::SessionID& sessionID) {
+		auto iter = subscribed_.find(symbol);
+		if (iter == subscribed.end())
+			return false;
+
+		auto subscriber_iter = iter->second.find(seesiodID);
+		if (subscriber_iter == iter->second.end())
+			return false;
+
+		iter->second.erase(subscriber_iter);
+		return true;
+	}
+
+private:
+	using Orderbook    = std::vector<PriceSnapshot>;
+	using Orderbooks   = std::unordered_map<std::string, Orderbook>;
+	using Subscriber   = FIX::SessionID;
+	using Subscribers  = std::unordered_set<Subscriber>;
+	using Subscribered = std::unordered_map<std::string, Subscribers>;
+
+	Orderbooks orderbooks_;
+	Subscribers subscribers_;
+};
+
 class Router;
 
 class Model {
@@ -32,14 +75,6 @@ public:
 	std::unique_ptr<U> create(const std::string& mdReqID, const std::string& symbol) {
 		return {};
 	}
-};
-
-WISE_ENUM_CLASS(BidOffer, Bid, Offer);
-struct PriceSnapshot {
-	BidOffer type;
-	double price;
-	int size;
-	std::string orderID;
 };
 
 template <>
