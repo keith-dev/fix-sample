@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MDSubscriber.h"
+
 #include <quickfix/fix44/MarketDataRequest.h>
 #include <quickfix/fix44/MarketDataSnapshotFullRefresh.h>
 //#include <quickfix/fix50sp2/MarketDataRequest.h>
@@ -11,49 +13,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-
-WISE_ENUM_CLASS(BidOffer, Bid, Offer);
-struct PriceSnapshot {
-	BidOffer type;
-	double price;
-	int size;
-	std::string orderID;
-};
-
-class MDPublisher {
-public:
-	bool Subscribe(const std::string& symbol, const FIX::SessionID& sessionID) {
-		auto iter = orderbooks_.find(symbol);
-		if (iter == orderbooks_.end())
-			return false;
-
-		subscribed_[symbol].insert(sessionID);
-		return true;
-	}
-
-	bool Unsubscribe(const std::string& symbol, const FIX::SessionID& sessionID) {
-		auto iter = subscribed_.find(symbol);
-		if (iter == subscribed.end())
-			return false;
-
-		auto subscriber_iter = iter->second.find(seesiodID);
-		if (subscriber_iter == iter->second.end())
-			return false;
-
-		iter->second.erase(subscriber_iter);
-		return true;
-	}
-
-private:
-	using Orderbook    = std::vector<PriceSnapshot>;
-	using Orderbooks   = std::unordered_map<std::string, Orderbook>;
-	using Subscriber   = FIX::SessionID;
-	using Subscribers  = std::unordered_set<Subscriber>;
-	using Subscribered = std::unordered_map<std::string, Subscribers>;
-
-	Orderbooks orderbooks_;
-	Subscribers subscribers_;
-};
 
 class Router;
 
@@ -82,6 +41,7 @@ inline
 std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::MarketDataSnapshotFullRefresh>(
 	const std::string& mdReqID, const std::string& symbol) {
 	auto mdSnapshotMsg = std::make_unique<FIX44::MarketDataSnapshotFullRefresh>();
+
 	mdSnapshotMsg->setField({FIX::FIELD::MDReqID, mdReqID}, true);
 	mdSnapshotMsg->setField({FIX::FIELD::Symbol, symbol}, true);
 
@@ -99,22 +59,6 @@ std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::Marke
 		noMDEntries.set(FIX::OrderID(order.orderID));
 		mdSnapshotMsg->addGroup(noMDEntries);
 	}
-/*
-		FIX::MDReqID("req:" + std::to_string(++mdReqCount)),
-		FIX::SubscriptionRequestType(FIX::SubscriptionRequestType_SNAPSHOT),
-		FIX::MarketDepth(0));
 
-	FIX44::MarketDataRequest::NoMDEntryTypes noMDEntryTypes;
-	for (const auto& entry : std::array<FIX::MDEntryType, 2>{FIX::MDEntryType_BID, FIX::MDEntryType_OFFER}) {
-		noMDEntryTypes.set(entry);
-		mdReqMsg->addGroup(noMDEntryTypes);
-	}
-
-	FIX44::MarketDataRequest::NoRelatedSym noRelatedSym;
-	for (const auto& symbol : symbols) {
-		noRelatedSym.setField(FIX::Symbol(symbol));
-		mdReqMsg->addGroup(noRelatedSym);
-	}
- */
 	return mdSnapshotMsg;
 }
