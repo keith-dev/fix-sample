@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <memory>
 #include <string>
@@ -24,9 +25,17 @@ struct PriceSnapshot {
 	std::string orderID;
 };
 
+template <typename CALLER>
 class MDPublisher {
 public:
-	MDPublisher() {
+	using Orderbook   = std::vector<PriceSnapshot>;
+	using Orderbooks  = std::unordered_map<std::string, Orderbook>;
+	using Subscriber  = std::string; // std::string.toStringFrozen()
+	using Subscribers = std::unordered_set<Subscriber>;
+	using Subscribed  = std::unordered_map<std::string, Subscribers>;
+	using Callback    = std::function<void(CALLER&, std::string, Subscribers, Orderbook)>;
+
+	explicit MDPublisher(CALLER* obj = nullptr, Callback publish = nullptr) : target_(obj), publish_(publish) {
 	}
 	~MDPublisher() {
 		stop();
@@ -36,28 +45,42 @@ public:
 		stop();
 
 		stopped_ = false;
-		worker_ = std::thread([&]() {
+		update_ = std::thread([&]() {
 				while (!stopped_) {
 					using namespace std::literals::chrono_literals;
-					std::this_thread::sleep_for(100ms);
+					std::this_thread::sleep_for(500ms);
 
 					std::lock_guard<std::mutex> lock(mtx_);
 					for (const auto& [symbol, subscribers] : subscribed_) {
 						// take a copy of subscribers/orderbook for publishing
-						std::unique_ptr<Subscribers> dup_subscribers(new Subscribers);
-						*dup_subscribers = subscribers;
-
-						std::unique_ptr<Orderbook> dup_orderbook(new Orderbook);
-						*dup_orderbook = orderbooks_.find(symbol)->second;
+						std::shared_ptr<QData> qdata(new QData{symbol, subscribers, orderbooks_.find(symbol)->second});
+						queue_.enqueue(qdata);
 
 						UpdateOrderbooks();
 					}
+				}
+			});
+		worker_ = std::thread([&]() {
+				std::shared_ptr<QData> qdata;
+				while (!stopped_) {
+					while (queue_.try_dequeue(qdata)) {
+						if (target_ && publish_) {
+							publish_(*target_, std::move(qdata->symbol, std::move(qdata->subscribers), std::move(qdata->orderbook)));
+						}
+						qdata.reset();
+					}
+
+					using namespace std::literals::chrono_literals;
+					std::this_thread::sleep_for(50ms);
 				}
 			});
 	}
 
 	void stop() {
 		stopped_ = true;
+		if (update_.joinable()) {
+			update_.join();
+		}
 		if (worker_.joinable()) {
 			worker_.join();
 		}
@@ -93,16 +116,21 @@ public:
 	}
 
 private:
-	using Orderbook   = std::vector<PriceSnapshot>;
-	using Orderbooks  = std::unordered_map<std::string, Orderbook>;
-	using Subscriber  = std::string; // std::string.toStringFrozen()
-	using Subscribers = std::unordered_set<Subscriber>;
-	using Subscribed  = std::unordered_map<std::string, Subscribers>;
+	struct QData {
+		std::string symbol;
+		Subscribers subscribers;
+		Orderbook orderbook;
+	};
 
 	Orderbooks orderbooks_;
 	Subscribed subscribed_;
 
 	std::atomic<bool> stopped_;
 	std::mutex mtx_;
+	std::thread update_;
 	std::thread worker_;
+	moodycamel::ConcurrentQueue<std::shared_ptr<QData>> queue_;
+
+	CALLER* target_{};
+	Callback publish_{};
 };
