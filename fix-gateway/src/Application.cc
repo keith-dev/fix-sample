@@ -50,9 +50,7 @@ void Application::onMessage(const FIX44::MarketDataRequest& msg, const FIX::Sess
 	FIX::MDReqID mdReqID;
 	msg.get(mdReqID);
 	for (const auto& symbol : model_.getSymbols(msg)) {
-		if (auto mdSnapshotMsg = model_.create<FIX44::MarketDataSnapshotFullRefresh>(mdReqID, symbol)) {
-			FIX::Session::sendToTarget(*mdSnapshotMsg, sessionID);
-		}
+		model_.Subscribe(mdReqID, symbol, sessionID.toStringFrozen());
 	}
 }
 
