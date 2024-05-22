@@ -8,15 +8,7 @@
 #include <quickfix/FileStore.h>
 #include <quickfix/Log.h>
 #include <quickfix/SocketAcceptor.h>
-/*
-#include <quickfix/Session.h>
 
-#include <quickfix/fix44/BusinessMessageReject.h>
-#include <quickfix/fix44/MarketDataRequest.h>
-#include <quickfix/fix44/MarketDataSnapshotFullRefresh.h>
-
-#include <spdlog/spdlog.h>
- */
 #include <wise_enum/wise_enum.h>
 
 #include <atomic>

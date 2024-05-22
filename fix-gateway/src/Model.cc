@@ -16,8 +16,8 @@ FIX::SessionID Model::toSessionID(const std::string& str) {
 	const char* q = std::strstr(s, "->");
 	if (!q)
 		return {};
-	std::string senderCompID(p + 1, static_cast<size_t>(q - p - 1));
-	std::string targetCompID(q + 2);
+	std::string senderCompID(p + 1, static_cast<size_t>(q - p - 1)); // offset :
+	std::string targetCompID(q + 2); // offset ->
 
 	spdlog::warn("\"{}:{}->{}\"", beginString, senderCompID, targetCompID);
 	return FIX::SessionID(beginString, senderCompID, targetCompID);
