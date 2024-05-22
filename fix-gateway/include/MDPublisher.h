@@ -25,17 +25,32 @@ struct PriceSnapshot {
 	std::string orderID;
 };
 
-template <typename CALLER>
+// A hash function used to hash a pair of any kind
+// https://www.geeksforgeeks.org/how-to-create-an-unordered_map-of-pairs-in-c/
+struct hash_pair {
+	template <class T1, class T2>
+	size_t operator()(const std::pair<T1, T2>& p) const {
+		auto hash1 = std::hash<T1>{}(p.first);
+		auto hash2 = std::hash<T2>{}(p.second);
+ 
+		// If hash1 == hash2, their XOR is zero.
+		if (hash1 == hash2) {
+			return hash1;
+		}
+		return hash1 ^ hash2;			  
+	}
+};
+
 class MDPublisher {
 public:
 	using Orderbook   = std::vector<PriceSnapshot>;
 	using Orderbooks  = std::unordered_map<std::string, Orderbook>;
-	using Subscriber  = std::string; // std::string.toStringFrozen()
-	using Subscribers = std::unordered_set<Subscriber>;
-	using Subscribed  = std::unordered_map<std::string, Subscribers>;
-	using Callback    = std::function<void(CALLER&, std::string, Subscribers, Orderbook)>;
+	using Subscriber  = std::pair<std::string, std::string>; // FIX::MDReqID, FIX::SessionID.toStringFrozen()
+	using Subscribers = std::unordered_set<Subscriber, hash_pair>;
+	using Subscribed  = std::unordered_map<std::string, Subscribers>; // symbol->mdreq/sessionIDs
+	using Callback	  = std::function<void(std::string, Subscribers, Orderbook)>;
 
-	explicit MDPublisher(CALLER* obj = nullptr, Callback publish = nullptr) : target_(obj), publish_(publish) {
+	explicit MDPublisher(Callback publish = nullptr) : publish_(publish) {
 	}
 	~MDPublisher() {
 		stop();
@@ -64,8 +79,8 @@ public:
 				std::shared_ptr<QData> qdata;
 				while (!stopped_) {
 					while (queue_.try_dequeue(qdata)) {
-						if (target_ && publish_) {
-							publish_(*target_, std::move(qdata->symbol, std::move(qdata->subscribers), std::move(qdata->orderbook)));
+						if (publish_) {
+							publish_(std::move(qdata->symbol), std::move(qdata->subscribers), std::move(qdata->orderbook));
 						}
 						qdata.reset();
 					}
@@ -89,14 +104,24 @@ public:
 	void UpdateOrderbooks() {
 	}
 
-	bool Subscribe(const std::string& symbol, const std::string& sessionID) {
+	bool Subscribe(const std::string& mdReqID, const std::string& symbol, const std::string& sessionID) {
 		std::lock_guard<std::mutex> lock(mtx_);
 
+		// symbol valid?
 		auto iter = orderbooks_.find(symbol);
 		if (iter == orderbooks_.end())
 			return false;
 
-		subscribed_[symbol].insert(sessionID);
+		// sessionID subscribed?
+		auto subscribed_iter = subscribed_.find(symbol);
+		if (subscribed_iter != subscribed_.end()) {
+			for (const auto& [mdReqIDLocal, sessionIDLocal] : subscribed_iter->second) {
+				if (sessionIDLocal == sessionID)
+					return false;
+			}
+		}
+
+		subscribed_[symbol].insert(std::make_pair(mdReqID, sessionID));
 		return true;
 	}
 
@@ -107,12 +132,21 @@ public:
 		if (iter == subscribed_.end())
 			return false;
 
-		auto subscriber_iter = iter->second.find(sessionID);
-		if (subscriber_iter == iter->second.end())
-			return false;
+		// erase all mdReqIDs matching subscribeID
+		int count{};
+		while (true) {
+			auto subscriber_iter = std::find_if(iter->second.begin(), iter->second.end(), [&](const auto& obj) {
+					return sessionID == obj.second;
+				});
+			if (subscriber_iter == iter->second.end()) {
+				if (count == 0)
+					return false;
+				return true;
+			}
 
-		iter->second.erase(subscriber_iter);
-		return true;
+			++count;
+			iter->second.erase(subscriber_iter);
+		}
 	}
 
 private:
@@ -130,7 +164,5 @@ private:
 	std::thread update_;
 	std::thread worker_;
 	moodycamel::ConcurrentQueue<std::shared_ptr<QData>> queue_;
-
-	CALLER* target_{};
 	Callback publish_{};
 };
