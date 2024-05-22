@@ -18,6 +18,7 @@ add_compile_options(
 	-Wno-missing-field-initializers
 	-Wno-overloaded-virtual
 	-Wno-unused-variable
+	-Wno-deprecated-declarations
 	-Wno-deprecated-copy-with-user-provided-copy)
 add_link_options(-pthread)
 

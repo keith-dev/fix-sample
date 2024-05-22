@@ -11,12 +11,12 @@ FIX::SessionID Model::toSessionID(const std::string& str) {
 	const char* p = std::strchr(s, ':');
 	if (!p)
 		return {};
-	std::string beginString{s, p - s};
+	std::string beginString{s, static_cast<size_t>(p - s)};
 
 	const char* q = std::strstr(s, "->");
 	if (!q)
 		return {};
-	std::string senderCompID(p + 1, q - p - 1);
+	std::string senderCompID(p + 1, static_cast<size_t>(q - p - 1));
 	std::string targetCompID(q + 2);
 
 	spdlog::warn("\"{}:{}->{}\"", beginString, senderCompID, targetCompID);
