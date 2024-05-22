@@ -156,7 +156,16 @@ private:
 		Orderbook orderbook;
 	};
 
-	Orderbooks orderbooks_;
+	Orderbooks orderbooks_{
+		{"GBP/USD", {
+			PriceSnapshot{BidOffer::Bid, 0.99, 3, "test::order::1"},
+			PriceSnapshot{BidOffer::Offer, 1.01, 3, "test::order::1"},
+			PriceSnapshot{BidOffer::Bid, 0.97, 3, "test::order::2"},
+			PriceSnapshot{BidOffer::Offer, 1.03, 3, "test::order::2"},
+			PriceSnapshot{BidOffer::Bid, 0.95, 3, "test::order::3"},
+			PriceSnapshot{BidOffer::Offer, 1.05, 3, "test::order::3"}
+		}}
+	};
 	Subscribed subscribed_;
 
 	std::atomic<bool> stopped_;

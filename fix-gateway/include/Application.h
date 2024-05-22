@@ -34,8 +34,8 @@ public:
 	Application(std::string_view configFile);
 	~Application() override;
 
-	void start() { acceptor_->start(); }
-	void stop()  { acceptor_->stop(); stopped_ = true; }
+	void start() { acceptor_->start(); model_.start(); }
+	void stop()  { acceptor_->stop(); model_.stop(); stopped_ = true; }
 	bool stopped() const  { return stopped_.load(); }
 	bool loggedOn() const { return state_ == State::LoggedOn; }
 

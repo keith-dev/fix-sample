@@ -8,7 +8,6 @@
 
 #include <wise_enum/wise_enum.h>
 
-#include <array>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -27,8 +26,18 @@ public:
 	Model(Router* router) : router_(router), subscriber_(Publish) {
 	}
 
+	void start() {
+		subscriber_.start();
+	}
+
+	void stop() {
+		subscriber_.stop();
+	}
+
 	void Subscribe(const std::string& mdReqID, const std::string& symbol, const std::string& sessionID);
 	static void Publish(std::string symbol, Subscribers subscribers, Orderbook orderbook);
+
+	static FIX::SessionID toSessionID(const std::string& str);
 
 	std::vector<std::string> getSymbols(const FIX44::MarketDataRequest& msg);
 
@@ -38,7 +47,7 @@ public:
 	}
 
 	template <typename U>
-	static std::unique_ptr<U> create(const std::string& mdReqID, const std::string& symbol) {
+	static std::unique_ptr<U> create(const std::string& mdReqID, const std::string& symbol, const Orderbook& orderbook) {
 		return {};
 	}
 };
@@ -46,17 +55,13 @@ public:
 template <>
 inline
 std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::MarketDataSnapshotFullRefresh>(
-	const std::string& mdReqID, const std::string& symbol) {
+	const std::string& mdReqID, const std::string& symbol, const Orderbook& orderbook) {
 	auto mdSnapshotMsg = std::make_unique<FIX44::MarketDataSnapshotFullRefresh>();
 
 	mdSnapshotMsg->setField({FIX::FIELD::MDReqID, mdReqID}, true);
 	mdSnapshotMsg->setField({FIX::FIELD::Symbol, symbol}, true);
 
-	static std::array<PriceSnapshot, 2> orders {
-		PriceSnapshot{BidOffer::Bid, 0.99, 3, "test::order::3"},
-		PriceSnapshot{BidOffer::Offer, 1.01, 3, "test::order::3"}
-	};
-	for (const auto& order : orders) {
+	for (const auto& order : orderbook) {
 		FIX44::MarketDataSnapshotFullRefresh::NoMDEntries noMDEntries;
 		(order.type == BidOffer::Bid)
 			? noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_BID))

@@ -1,6 +1,27 @@
 #include "Model.h"
 
+#include <spdlog/spdlog.h>
+
 #include <quickfix/fix44/MarketDataRequest.h>
+
+#include <cstring>
+
+FIX::SessionID Model::toSessionID(const std::string& str) {
+	const char* s = str.c_str();
+	const char* p = std::strchr(s, ':');
+	if (!p)
+		return {};
+	std::string beginString{s, p - s};
+
+	const char* q = std::strstr(s, "->");
+	if (!q)
+		return {};
+	std::string senderCompID(p + 1, q - p - 1);
+	std::string targetCompID(q + 2);
+
+	spdlog::warn("\"{}:{}->{}\"", beginString, senderCompID, targetCompID);
+	return FIX::SessionID(beginString, senderCompID, targetCompID);
+}
 
 void Model::Subscribe(const std::string& mdReqID, const std::string& symbol, const std::string& sessionID) {
 	subscriber_.Subscribe(mdReqID, symbol, sessionID);
@@ -8,8 +29,8 @@ void Model::Subscribe(const std::string& mdReqID, const std::string& symbol, con
 
 void Model::Publish(std::string symbol, Subscribers subscribers, Orderbook orderbook) {
 	for (const auto& [mdReqID, sessionID] : subscribers) {
-		if (auto mdSnapshotMsg = create<FIX44::MarketDataSnapshotFullRefresh>(mdReqID, symbol)) {
-			FIX::Session::sendToTarget(*mdSnapshotMsg, sessionID);
+		if (auto mdSnapshotMsg = create<FIX44::MarketDataSnapshotFullRefresh>(mdReqID, symbol, orderbook)) {
+			FIX::Session::sendToTarget(*mdSnapshotMsg, toSessionID(sessionID));
 		}
 	}
 }
