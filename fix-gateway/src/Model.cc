@@ -27,14 +27,6 @@ void Model::Subscribe(const std::string& mdReqID, const std::string& symbol, con
 	subscriber_.Subscribe(mdReqID, symbol, sessionID);
 }
 
-void Model::Publish(std::string symbol, Subscribers subscribers, Orderbook orderbook) {
-	for (const auto& [mdReqID, sessionID] : subscribers) {
-		if (auto mdSnapshotMsg = create<FIX44::MarketDataSnapshotFullRefresh>(mdReqID, symbol, orderbook)) {
-			FIX::Session::sendToTarget(*mdSnapshotMsg, toSessionID(sessionID));
-		}
-	}
-}
-
 std::vector<std::string> Model::getSymbols(const FIX44::MarketDataRequest& msg) {
 	std::vector<std::string> symbols;
 
@@ -53,3 +45,32 @@ std::vector<std::string> Model::getSymbols(const FIX44::MarketDataRequest& msg) 
 	return symbols;
 }
 
+void Model::Publish(std::string symbol, Subscribers subscribers, Orderbook orderbook) {
+	for (const auto& [mdReqID, sessionID] : subscribers) {
+		if (auto mdSnapshotMsg = create<FIX44::MarketDataSnapshotFullRefresh>(mdReqID, symbol, orderbook)) {
+			FIX::Session::sendToTarget(*mdSnapshotMsg, toSessionID(sessionID));
+		}
+	}
+}
+
+template <>
+std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::MarketDataSnapshotFullRefresh>(
+	const std::string& mdReqID, const std::string& symbol, const Orderbook& orderbook) {
+	auto mdSnapshotMsg = std::make_unique<FIX44::MarketDataSnapshotFullRefresh>();
+
+	mdSnapshotMsg->setField({FIX::FIELD::MDReqID, mdReqID}, true);
+	mdSnapshotMsg->setField({FIX::FIELD::Symbol, symbol}, true);
+
+	for (const auto& order : orderbook) {
+		FIX44::MarketDataSnapshotFullRefresh::NoMDEntries noMDEntries;
+		(order.type == BidOffer::Bid)
+			? noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_BID))
+			: noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_OFFER));
+		noMDEntries.set(FIX::MDEntryPx(order.price));
+		noMDEntries.set(FIX::MDEntrySize(order.size));
+		noMDEntries.set(FIX::OrderID(order.orderID));
+		mdSnapshotMsg->addGroup(noMDEntries);
+	}
+
+	return mdSnapshotMsg;
+}

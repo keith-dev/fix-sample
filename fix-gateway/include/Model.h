@@ -35,11 +35,11 @@ public:
 	}
 
 	void Subscribe(const std::string& mdReqID, const std::string& symbol, const std::string& sessionID);
+	std::vector<std::string> getSymbols(const FIX44::MarketDataRequest& msg);
+
 	static void Publish(std::string symbol, Subscribers subscribers, Orderbook orderbook);
 
 	static FIX::SessionID toSessionID(const std::string& str);
-
-	std::vector<std::string> getSymbols(const FIX44::MarketDataRequest& msg);
 
 	template <typename U>
 	static std::unique_ptr<U> create(const std::vector<std::string>& symbols) {
@@ -53,24 +53,5 @@ public:
 };
 
 template <>
-inline
 std::unique_ptr<FIX44::MarketDataSnapshotFullRefresh> Model::create<FIX44::MarketDataSnapshotFullRefresh>(
-	const std::string& mdReqID, const std::string& symbol, const Orderbook& orderbook) {
-	auto mdSnapshotMsg = std::make_unique<FIX44::MarketDataSnapshotFullRefresh>();
-
-	mdSnapshotMsg->setField({FIX::FIELD::MDReqID, mdReqID}, true);
-	mdSnapshotMsg->setField({FIX::FIELD::Symbol, symbol}, true);
-
-	for (const auto& order : orderbook) {
-		FIX44::MarketDataSnapshotFullRefresh::NoMDEntries noMDEntries;
-		(order.type == BidOffer::Bid)
-			? noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_BID))
-			: noMDEntries.set(FIX::MDEntryType(FIX::MDEntryType_OFFER));
-		noMDEntries.set(FIX::MDEntryPx(order.price));
-		noMDEntries.set(FIX::MDEntrySize(order.size));
-		noMDEntries.set(FIX::OrderID(order.orderID));
-		mdSnapshotMsg->addGroup(noMDEntries);
-	}
-
-	return mdSnapshotMsg;
-}
+	const std::string& mdReqID, const std::string& symbol, const Orderbook& orderbook);
