@@ -52,6 +52,7 @@ public:
 
 	explicit MDPublisher(Callback publish = nullptr) : publish_(publish) {
 	}
+
 	~MDPublisher() {
 		stop();
 	}
@@ -125,28 +126,74 @@ public:
 		return true;
 	}
 
-	bool Unsubscribe(const std::string& symbol, const std::string& sessionID) {
+	size_t Unsubscribe(const std::string& symbol, const std::string& sessionID) {
 		std::lock_guard<std::mutex> lock(mtx_);
 
-		auto iter = subscribed_.find(symbol);
-		if (iter == subscribed_.end())
+		auto subscribedIter = subscribed_.find(symbol);
+		if (subscribedIter == subscribed_.end()) {
 			return false;
+		}
 
-		// erase all mdReqIDs matching subscribeID
-		int count{};
-		while (true) {
-			auto subscriber_iter = std::find_if(iter->second.begin(), iter->second.end(), [&](const auto& obj) {
-					return sessionID == obj.second;
-				});
-			if (subscriber_iter == iter->second.end()) {
-				if (count == 0)
-					return false;
-				return true;
+		size_t unsubscribeCount{};
+
+		auto& subscribers = subscribedIter->second;
+		for (auto subscribersIter = subscribers.begin(); subscribersIter != subscribers.end(); ) {
+			const auto& sessionIDLocal = subscribersIter->second;
+			if (sessionIDLocal == sessionID) {
+				subscribersIter = subscribers.erase(subscribersIter);
+				++unsubscribeCount;
+			} else {
+				++subscribersIter;
+			}
+		}
+
+		if (subscribedIter->second.empty()) {
+			subscribed_.erase(subscribedIter);
+		}
+
+		return unsubscribeCount;
+	}
+
+	size_t Unsubscribe(const std::string& sessionID) {
+		std::lock_guard<std::mutex> lock(mtx_);
+		size_t unsubscribeCount{};
+
+		// sessionID subscribed?
+		for (auto subscribedIter = subscribed_.begin(); subscribedIter != subscribed_.end(); ) {
+			const auto& symbol = subscribedIter->first;
+			auto& subscribers = subscribedIter->second;
+
+			for (auto subscribersIter = subscribers.begin(); subscribersIter != subscribers.end(); ) {
+				const auto& mdReqIDLocal = subscribersIter->first;
+				const auto& sessionIDLocal = subscribersIter->second;
+
+				if (sessionIDLocal == sessionID) {
+					subscribersIter = subscribers.erase(subscribersIter);
+					++unsubscribeCount;
+				} else {
+					++subscribersIter;
+				}
 			}
 
-			++count;
-			iter->second.erase(subscriber_iter);
+			if (subscribedIter->second.empty()) {
+				subscribedIter = subscribed_.erase(subscribedIter);
+			} else {
+				++subscribedIter;
+			}
 		}
+
+		return unsubscribeCount;
+	}
+
+	size_t Unsubscribe() {
+		std::lock_guard<std::mutex> lock(mtx_);
+		const auto unsubscribeCount = std::distance(subscribed_.begin(), subscribed_.end());
+
+		while (subscribed_.begin() != subscribed_.end()) {
+			subscribed_.erase(subscribed_.begin());
+		}
+
+		return unsubscribeCount;
 	}
 
 private:

@@ -35,6 +35,9 @@ public:
 	}
 
 	void Subscribe(const std::string& mdReqID, const std::string& symbol, const std::string& sessionID);
+	void Unsubscribe(const std::string& symbol, const std::string& sessionID);
+	void Unsubscribe(const std::string& sessionID);
+	void Unsubscribe();
 	std::vector<std::string> getSymbols(const FIX44::MarketDataRequest& msg);
 
 	static void Publish(std::string symbol, Subscribers subscribers, Orderbook orderbook);

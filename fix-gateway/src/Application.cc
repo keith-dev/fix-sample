@@ -14,8 +14,10 @@ Application::Application(std::string_view configFile) :
 }
 
 Application::~Application() {
-	if (!stopped())
+	if (!stopped()) {
+		model_.Unsubscribe();
 		stop();
+	}
 }
 
 void Application::onCreate(const FIX::SessionID& sessionID) {
@@ -27,6 +29,7 @@ void Application::onLogon(const FIX::SessionID& sessionID) {
 }
 void Application::onLogout(const FIX::SessionID& sessionID) {
 	spdlog::info("{} sessionID={}", __PRETTY_FUNCTION__, sessionID.toString());
+	model_.Unsubscribe(sessionID.toStringFrozen());
 	state_ = State::LoggedOut;
 }
 
@@ -49,8 +52,18 @@ void Application::onMessage(const FIX44::MarketDataRequest& msg, const FIX::Sess
 
 	FIX::MDReqID mdReqID;
 	msg.get(mdReqID);
+	FIX::SubscriptionRequestType subscriptionReqType;
+	msg.get(subscriptionReqType);
 	for (const auto& symbol : model_.getSymbols(msg)) {
-		model_.Subscribe(mdReqID, symbol, sessionID.toStringFrozen());
+		switch (subscriptionReqType) {
+		case FIX::SubscriptionRequestType_SNAPSHOT:
+		case FIX::SubscriptionRequestType_SNAPSHOT_AND_UPDATES:
+			model_.Subscribe(mdReqID, symbol, sessionID.toStringFrozen());
+			break;
+		case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT:
+			model_.Unsubscribe(symbol, sessionID.toStringFrozen());
+			break;
+		}
 	}
 }
 

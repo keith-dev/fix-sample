@@ -27,6 +27,18 @@ void Model::Subscribe(const std::string& mdReqID, const std::string& symbol, con
 	subscriber_.Subscribe(mdReqID, symbol, sessionID);
 }
 
+void Model::Unsubscribe(const std::string& symbol, const std::string& sessionID) {
+	subscriber_.Unsubscribe(symbol, sessionID);
+}
+
+void Model::Unsubscribe(const std::string& sessionID) {
+	subscriber_.Unsubscribe(sessionID);
+}
+
+void Model::Unsubscribe() {
+	subscriber_.Unsubscribe();
+}
+
 std::vector<std::string> Model::getSymbols(const FIX44::MarketDataRequest& msg) {
 	std::vector<std::string> symbols;
 
